@@ -47,7 +47,9 @@
 #include <fstream>
 #include <streambuf>
 #include <system_error>
+#include <codecvt>
 #include "shlwapi.h"
+#include <direct.h >
 #include <io.h> 
 #include <fcntl.h> 
 #include "../src/LogMonitor/Utility.h"
@@ -57,6 +59,8 @@
 #include "../src/LogMonitor/LogWriter.h"
 #include "../src/LogMonitor/EtwMonitor.h"
 #include "../src/LogMonitor/EventMonitor.h"
+#include "../src/LogMonitor/FileMonitor/Utilities.h"
 #include "../src/LogMonitor/LogFileMonitor.h"
 #include "../src/LogMonitor/ProcessMonitor.h"
+#include "Utility.h"
 #endif //PCH_H
