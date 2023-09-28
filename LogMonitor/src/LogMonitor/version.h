@@ -6,11 +6,11 @@
 #ifndef _VERSION_H_
 #define _VERSION_H_
 
-#define LM_MAJORNUMBER          1
-#define LM_MINORNUMBER          2
-#define LM_BUILDNUMBER          1
-#ifndef LM_BUILDMINORVERSION
-#define LM_BUILDMINORVERSION    0
-#endif
+#define LM_MAJORNUMBER          2
+#define LM_MINORNUMBER          0
+#define LM_PATCHNUMBER          1
+// removed in support of semantic versioning - https://semver.org
+// major.minor.patch
+// #define LM_BUILDMINORVERSION    0
 
 #endif

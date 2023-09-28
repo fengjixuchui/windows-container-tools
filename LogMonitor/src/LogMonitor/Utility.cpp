@@ -4,6 +4,7 @@
 //
 
 #include "pch.h"
+#include <regex>
 
 using namespace std;
 
@@ -245,3 +246,100 @@ std::wstring Utility::ReplaceAll(_In_ std::wstring Str, _In_ const std::wstring&
     return Str;
 }
 
+
+/// 
+/// helper function for a basic check if a string is a Number (JSON)
+/// as per the JSON spec - https://www.json.org/json-en.html
+/// only numbers not covered are those in scientific e-notation
+/// 
+bool Utility::isJsonNumber(_In_ std::wstring& str)
+{
+    wregex isNumber(L"(^\\-?\\d+$)|(^\\-?\\d+\\.\\d+)$");
+    return regex_search(str, isNumber);
+}
+
+///
+/// helper function to "sanitize" a string to be valid JSON
+/// i.e. escape ", \r, \n and \ within a string
+/// to \", \\r, \\n and \\ respectively
+///
+void Utility::SanitizeJson(_Inout_ std::wstring& str)
+{
+    size_t i = 0;
+    while (i < str.size()) {
+        auto sub = str.substr(i, 1);
+        if (sub == L"\"") {
+            if ((i > 0 && str.substr(i - 1, 1) != L"\\")
+                || i == 0)
+            {
+                str.replace(i, 1, L"\\\"");
+                i++;
+            }
+        }
+        else if (sub == L"\\") {
+            if ((i < str.size() - 1 && str.substr(i + 1, 1) != L"\\")
+                || i == str.size() - 1)
+            {
+                str.replace(i, 1, L"\\\\");
+                i++;
+            }
+            else {
+                i += 2;
+            }
+        }
+        else if (sub == L"\n") {
+            if ((i > 0 && str.substr(i - 1, 1) != L"\\")
+                || i == 0)
+            {
+                str.replace(i, 1, L"\\n");
+                i++;
+            }
+        }
+        else if (sub == L"\r") {
+            if ((i > 0 && str.substr(i - 1, 1) != L"\\")
+                || i == 0)
+            {
+                str.replace(i, 1, L"\\r");
+                i++;
+            }
+        }
+        i++;
+    }
+}
+
+bool Utility::ConfigAttributeExists(AttributesMap& Attributes, std::wstring attributeName)
+{
+    auto it = Attributes.find(attributeName);
+    return it != Attributes.end() && it->second != nullptr;
+}
+
+///
+// Converts the time to wait to a large integer
+///
+LARGE_INTEGER Utility::ConvertWaitIntervalToLargeInt(_In_ int timeInterval)
+{
+    LARGE_INTEGER liDueTime{};
+
+    int millisecondsToWait = timeInterval * 1000;
+    liDueTime.QuadPart = -millisecondsToWait * 10000LL;  // wait time in 100 nanoseconds
+    return liDueTime;
+}
+
+///
+/// Returns the time (in seconds) to wait based on the specified waitInSeconds
+///
+int Utility::GetWaitInterval(_In_ std::double_t waitInSeconds, _In_ int elapsedTime)
+{
+    if (isinf(waitInSeconds))
+    {
+        return static_cast<int>(WAIT_INTERVAL);
+    }
+
+    if (waitInSeconds < WAIT_INTERVAL)
+    {
+        return static_cast<int>(waitInSeconds);
+    }
+
+    const auto remainingTime = static_cast<int>(waitInSeconds - elapsedTime);
+    return remainingTime <= WAIT_INTERVAL ? remainingTime : WAIT_INTERVAL;
+}

@@ -11,7 +11,7 @@
 
 A sample Log Monitor Config file would be structured as follows: 
 
-```
+```json
 {
   "LogConfig": {
     "sources": [
@@ -85,7 +85,7 @@ logman query providers | findstr "<GUID or Provider Name>"
 - `providers` (required): Providers are components that generate events. This field is a list that shows the event providers you are monitoring for.
     - `providerName` (optional): This represents the name of the provider. It is what shows up when you use logman.
     - `providerGuid` (required): This is a globally unique identifier that uniquely identifies the provider you specified in the ProviderName field.
-    - `level` (optional): This string field specifies the verboseness of the events collected. These include Critical, Error, and Warning, and Information. If the level is not specified, the tool displays all events in the named channel, spanning various levels.
+    - `level` (optional): This string field specifies the verboseness of the events collected. These include `Critical`, `Error`, `Warning`, `Information` and `Verbose`. If the level is not specified, level will be set to `Error`.
     - `keywords` (optional): This string field is a bitmask that specifies what events to collect. Only events with keywords matching the bitmask are collected This is an optional parameter. Default is 0 and all the events will be collected.
 
 ### Examples
@@ -151,7 +151,7 @@ Event log is a record of events related to the system, security, and application
 - `eventFormatMultiLine` (Optional): This is a Boolean field that is used to indicate whether the Log Monitor should format the logs to `STDOUT` as multi-line or single line. If the field is not set in the config file, by default the value is `true`. If the field is set `true`, the tool does not format the event messages to a single line (and thus event messages can span multiple lines). If set to false, the tool formats the event log messages to a single line and removes new line characters.
 - `channels` (Required): A channel is a named stream of events. It serves as a logical pathway for transporting events from the event publisher to a log file and possibly a subscriber. It is a sink that collects events. Each defined channel has the following properties:
     - `name` (Required): The name of the event channel
-    - `level` (Optional): This string field specifies the verboseness of the events collected. These include `Critical`, `Error`, `Warning`, and `Information`. If the level is not specified, the tool displays all events in the named channel, spanning various levels.
+    - `level` (optional): This string field specifies the verboseness of the events collected. These include `Critical`, `Error`, `Warning`, `Information` and `Verbose`. If the level is not specified, level will be set to `Error`.
 
 ### Examples
 
@@ -159,15 +159,21 @@ Example 1 (Application channel, verboseness: Error):
 
  ```json
 {
-  "type": "EventLog",
-  "startAtOldestRecord": true,
-  "eventFormatMultiLine": false,
-  "channels": [
-    {
-      "name": "application",
-      "level": "Error"
-    }
-  ]
+  "LogConfig": {
+    "sources": [
+      {
+        "type": "EventLog",
+        "startAtOldestRecord": true,
+        "eventFormatMultiLine": false,
+        "channels": [
+          {
+            "name": "application",
+            "level": "Error"
+          }
+        ]
+      }
+    ]
+  }
 }
  ```
 
@@ -175,15 +181,21 @@ Example 1 (Application channel, verboseness: Error):
 
  ```json
 {
-  "type": "EventLog",
-  "startAtOldestRecord": true,
-  "eventFormatMultiLine": true,
-  "channels": [
-    {
-      "name": "system",
-      "level": " Information"
-    }
-  ]
+  "LogConfig": {
+    "sources": [
+      {
+        "type": "EventLog",
+        "startAtOldestRecord": true,
+        "eventFormatMultiLine": true,
+        "channels": [
+          {
+            "name": "system",
+            "level": " Information"
+          }
+        ]
+      }
+    ]
+  }
 }
  ```
 
@@ -205,7 +217,42 @@ This will monitor any changes in log files matching a specified filter, given th
 - `filter` (optional): uses [MS-DOS wildcard match type](https://learn.microsoft.com/en-us/previous-versions/windows/desktop/indexsrv/ms-dos-and-windows-wildcard-characters) i.e.. `*, ?`. Can be set to empty, which will be default to `"*"`.
 - `includeSubdirectories` (optional) : `"true|false"`, specify if sub-directories also need to be monitored. Defaults to `false`.
 - `includeFileNames` (optional): `"true|false"`, specifies whether to include file names in the logline, eg. `sample.log: xxxxx`. Defaults to `false`.
+- `waitInSeconds` (optional): specifies the duration to wait for a file or folder to be created if it does not exist. It takes integer values between 0-INFINITY. Defaults to `300` seconds, i.e, 5 minutes. It can be passed as a value or a string. 
 
+  -	`waitInSeconds = 0`
+
+    When the value is zero(0), this is means that we do not wait and LogMonitor terminates with an error
+
+  -	`waitInSeconds = +integer`
+        
+    When the value is a positive integer, LogMonitor will wait for the specified time. Once the predefined time elapses, LogMonitor will terminate with an error.
+
+  -	`waitInSeconds = "INFINITY"`
+
+    In this case, LogMonitor will wait forever for the folder to be created. 
+      
+    **NOTE:**
+    - This field is case insensitive
+    - When "INFINITY" is passed, it must be passed as a string.
+    - The infinity symbol, ∞, is also allowed as a string or the symbol itself.
+
+  <br />
+
+  **Examples:**
+  1. Wait for 10 seconds
+      * As a value: `"waitInSeconds": 10`
+      * As a string: `"waitInSeconds": "10"` 
+  2. Wait forever/infinitely:
+      * `"waitInSeconds": "INFINITY"` or  `"waitInSeconds": "inf"` or  `"waitInSeconds": "∞"`
+      * This field is case-insensitive
+
+  <br />
+
+  If a user provides an invalid value, a value less than 0, an error occurs:
+  ```
+  ERROR: Error parsing configuration file. 'waitInSeconds' attribute must be greater or equal to zero
+  WARNING: Failed to parse configuration file. Error retrieving source attributes. Invalid source
+  ```
 
 ### Examples
 
@@ -218,11 +265,34 @@ This will monitor any changes in log files matching a specified filter, given th
         "directory": "c:\\inetpub\\logs",
         "filter": "*.log",
         "includeSubdirectories": true,
-        "includeFileNames": false
+        "includeFileNames": false,
+        "waitInSeconds": 10
       }
     ]
   }
 }
+```
+
+**Note:** When the directory is the root directory (e.g. C:\\ ) we can only monitor a file that is in the root directory, not a subfolder. This is due to access issues (even when running LogMonitor as an Admin) for some of the folders in the root directory. Therefore, `includeSubdirectories` must be `false` for the root directory. See example below:
+
+```json
+{
+  "LogConfig": {
+      "sources": [
+          {
+              "type": "File",
+              "directory": "C:",
+              "filter": "*.log",
+              "includeSubdirectories": false
+          }
+      ]
+  }
+}
+```
+When the root directory is passed and `includeSubdirectories = true`, we get an error:
+```
+ERROR: LoggerSettings: Invalid Source File atrribute 'directory' (C:) and 'includeSubdirectories' (true).'includeSubdirectories' attribute cannot be 'true' for the root directory
+WARNING: Failed to parse configuration file. Error retrieving source attributes. Invalid source
 ```
 
 ## Process Monitoring
